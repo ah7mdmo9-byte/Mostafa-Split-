@@ -1,0 +1,11 @@
+{
+  "appId": "com.gymall.app",
+  "appName": "Mostafa🐺Split",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#2F5BFF"
+    }
+  }
+}
