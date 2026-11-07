@@ -23,6 +23,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Prepare web folder
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+
       - name: Add Android platform
         run: npx cap add android
 
