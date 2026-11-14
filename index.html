@@ -102,14 +102,16 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:
     <div class="card"><b>وقت الراحة بين المجموعات (ثانية)</b><input id="rs" type="number" inputmode="numeric" style="margin-top:6px"></div>
     <div class="card row"><b>صوت التايمر</b><button class="chip" id="snd"></button></div>
     <div class="card"><b>درجة الصوت</b><input id="vol" type="range" min="0" max="100" step="5" style="margin-top:6px"><button class="btn alt" id="vt">جرّب صوت نهاية التايمر</button></div>
+    <div class="card"><b>جدول الأسبوع</b><div id="sch"></div></div>
     <div class="card"><b>برامج جاهزة</b><div class="meta">اختيار برنامج بيستبدل جدولك الحالي. السجل القديم بيفضل.</div><div id="tpl"></div></div>
+    <div class="card"><b>نسخة احتياطية كاملة</b><div class="meta">انسخها واحفظها في ملاحظات قبل أي تحديث. للاسترجاع الصق النص في المربع واضغط استرجاع.</div><textarea id="bkt" rows="4" placeholder="النسخة هتظهر هنا" style="margin-top:6px"></textarea><button class="btn" id="bk1">تجهيز ونسخ النسخة</button><button class="btn alt" id="bk2">استرجاع من النص</button></div>
     <div class="card"><b>تصدير البيانات</b><button class="btn alt" id="exp">تجهيز ملف CSV للنسخ</button><textarea id="expt" rows="5" hidden></textarea></div>
   </section>
 </main>
 <div id="tm" hidden><div><span class="meta">راحة بين المجموعات</span><b id="tv">0:00</b></div><div><button id="tminus">-15</button><button id="tplus">+15</button><button id="tskip">تخطي</button></div></div>
 <div id="ts" hidden></div>
 <script>
-var DAYS=["السبت","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"],JS2IDX=[1,2,3,4,5,6,0];
+var DAYS=["السبت","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"],JS2IDX=[1,2,3,4,5,6,0],DEFTPL="بوش / ليج / بول (3 أيام)";
 var LIB=["بنش بريس","انكلاين بنش بريس","انكلاين دمبل","تفتيح","كروس أوفر","ديبس","شولدر بريس","رفرفة جانبي","رفرفة خلفي","شراغز","ترايسبس بوش داون","فرنش بريس","سحب أمامي","تجديف بار","تجديف دمبل","سحب أرضي","ديدلفت","رومانيان ديدلفت","باي بار","باي دمبل","هامر كيرل","سكوات","ليج بريس","ليج اكستنشن","ليج كيرل","لانجز","سمانة","كرنش","بلانك","رفع أرجل","كارديو"];
 function uid(){return Math.random().toString(36).slice(2,9)}
 function mk(s){return s?s.split("|").map(function(p){var a=p.split(":");return {id:uid(),n:a[0],s:+a[1],r:a[2]}}):[]}
@@ -119,18 +121,38 @@ LG="سكوات:4:8|ليج بريس:4:12|رومانيان ديدلفت:3:10|لي�
 UP="بنش بريس:4:8|تجديف بار:4:8|شولدر بريس:3:10|سحب أمامي:3:10|باي بار:3:12|ترايسبس بوش داون:3:12",
 FB="سكوات:3:8|بنش بريس:3:8|تجديف بار:3:8|شولدر بريس:3:10|رومانيان ديدلفت:3:10|كرنش:3:15";
 var TPL={
-"دفع / سحب / أرجل (6 أيام)":[["دفع",PU],["سحب",PL],["أرجل",LG],["دفع",PU],["سحب",PL],["أرجل",LG],["راحة",""]],
-"علوي / سفلي (4 أيام)":[["علوي",UP],["سفلي",LG],["راحة",""],["علوي",UP],["سفلي",LG],["راحة",""],["راحة",""]],
-"فول بودي (3 أيام)":[["فول بودي",FB],["راحة",""],["فول بودي",FB],["راحة",""],["فول بودي",FB],["راحة",""],["راحة",""]]};
-function build(t){return t.map(function(d){return {t:d[0],e:mk(d[1])}})}
-var S={plan:build(TPL["دفع / سحب / أرجل (6 أيام)"]),log:{},body:[],rest:90};
+"بوش / ليج / بول (3 أيام)":[["بوش",PU],["ليج",LG],["بول",PL]],
+"علوي / سفلي (يومين)":[["علوي",UP],["سفلي",LG]],
+"فول بودي (3 أيام)":[["فول بودي A",FB],["فول بودي B",FB],["فول بودي C",FB]]};
+function build(t){var old={};try{S.plan.forEach(function(d){d.e.forEach(function(x){if(!old[x.n])old[x.n]=x.id})})}catch(e){}
+  return t.map(function(d){var e=mk(d[1]);e.forEach(function(x){if(old[x.n])x.id=old[x.n]});return {t:d[0],e:e}})}
+var S={v:2,plan:build(TPL[DEFTPL]),log:{},body:[],rest:90};
 try{var raw=localStorage.getItem("gym-all-v1");if(raw){var p=JSON.parse(raw);if(p&&p.plan)S=p}}catch(e){}
 function save(){try{localStorage.setItem("gym-all-v1",JSON.stringify(S))}catch(e){}}
+(function(){ /* ترحيل البيانات القديمة (7 أيام) للنظام الجديد بدون فقد السجل */
+  if(S.v>=2)return;
+  var old=S.plan,np=build(TPL[DEFTPL]),byName={},seen={},map={};
+  np.forEach(function(d){d.e.forEach(function(x){byName[x.n]=x})});
+  old.forEach(function(d){var g=/أرجل|سفلي/.test(d.t)?1:/سحب|بول/.test(d.t)?2:0;
+    (d.e||[]).forEach(function(x){var t=byName[x.n];
+      if(!t){t={id:x.id,n:x.n,s:x.s,r:x.r};np[g].e.push(t);byName[x.n]=t;seen[x.n]=1}
+      else if(!seen[x.n]){t.s=x.s;t.r=x.r;seen[x.n]=1}
+      map[x.id]=t.id})});
+  Object.keys(S.log||{}).forEach(function(dt){var L=S.log[dt],o={};
+    Object.keys(L).forEach(function(id){var k=map[id]||id;o[k]=(o[k]||[]).concat(L[id])});S.log[dt]=o});
+  S.plan=np;S.v=2;save()
+})();
+function defSched(n){var a=[];for(var i=0;i<6;i++)a.push(i%n);a.push(-1);return a}
+if(!S.sched||S.sched.length!=7){S.sched=defSched(S.plan.length);save()}
+function PD(){return cur>=0&&S.plan[cur]?S.plan[cur]:null}
+function dayTitle(i){var k=S.sched[i];return k>=0&&S.plan[k]?S.plan[k].t:"راحة"}
+function updToday(){var w=JS2IDX[new Date().getDay()];$("today").textContent="النهاردة "+DAYS[w]+" · "+dayTitle(w)}
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function dstr(d){var m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(x<10?"0":"")+x}
-var now=new Date(),TODAY=dstr(now),TIDX=JS2IDX[now.getDay()],cur=TIDX,tt=null,WD=TODAY,man={};
-function setCur(i){cur=i;man={};WD=dstr(new Date(now.getFullYear(),now.getMonth(),now.getDate()+(i-TIDX)))}
+var now=new Date(),TODAY=dstr(now),TIDX=0,cur=0,tt=null,WD=TODAY,man={};
+function setCur(i){cur=i;man={};WD=TODAY}
+
 function toast(m){var t=$("ts");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},3500)}
 function e1(w,r){return r<=1?w:Math.round(w*(1+r/30)*10)/10}
 function exName(){var m={};S.plan.forEach(function(d){d.e.forEach(function(x){m[x.id]=x.n})});return m}
@@ -139,10 +161,9 @@ function lastSets(id){var ds=Object.keys(S.log).filter(function(d){return d<WD&&
 function getSets(x){var L=S.log[WD]=S.log[WD]||{};
   if(!L[x.id]){var ls=lastSets(x.id),a=[];for(var i=0;i<x.s;i++){var q=ls[i]||ls[ls.length-1];a.push({w:q?q.w:0,r:q?q.r:(parseInt(x.r,10)||10),t:"n",ok:0})}L[x.id]=a}return L[x.id]}
 function bestE1(id,skip){var b=0;Object.keys(S.log).forEach(function(d){(S.log[d][id]||[]).forEach(function(s){if(s!==skip&&s.ok&&s.t!="w"&&s.w>0){var v=e1(s.w,s.r);if(v>b)b=v}})});return b}
-$("today").textContent="النهاردة "+DAYS[TIDX]+" · "+S.plan[TIDX].t;
 $("lib").innerHTML=LIB.map(function(n){return '<option value="'+n+'">'}).join("");
 
-function renderDays(){var h="";for(var i=0;i<7;i++)h+='<button data-i="'+i+'" class="'+(i==cur?"on ":"")+(i==TIDX?"today":"")+'">'+DAYS[i]+'</button>';$("days").innerHTML=h}
+function renderDays(){var h="";for(var i=0;i<S.plan.length;i++)h+='<button data-i="'+i+'" class="'+(i==cur?"on ":"")+(i==TIDX?"today":"")+'">'+esc(S.plan[i].t)+'</button>';$("days").innerHTML=h}
 $("days").onclick=function(ev){var b=ev.target.closest("button");if(b){setCur(+b.dataset.i);renderWork()}};
 var TG={n:"w",w:"f",f:"d",d:"n"},TL={w:"إ",f:"ف",d:"د"};
 function ac(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state=="suspended")actx.resume()}catch(e){}return actx}
@@ -151,10 +172,10 @@ function sfx(k){return;var m={tap:[[600,.05]],off:[[330,.09]],ck:[[520,.08],[780
 function exStat(ss){var v=0,n=0,b=null;ss.forEach(function(s){if(s.ok&&s.t!="w"){v+=s.w*s.r;n++;if(!b||e1(s.w,s.r)>e1(b.w,b.r))b=s}});return{v:v,n:n,b:b}}
 function renderWork(){
   renderDays();
-  var d=S.plan[cur],h="",vol=0,sets=0;
+  var d=PD()||{e:[]},h="",vol=0,sets=0;
   var info=d.e.map(function(x){var ss=getSets(x);return {x:x,ss:ss,full:ss.length>0&&ss.every(function(s){return s.ok})}});
   var first=info.filter(function(o){return !o.full})[0];
-  if(!d.e.length)h='<div class="empty">يوم راحة. ارتاح واشرب مية.</div>';
+  if(!d.e.length)h='<div class="empty">'+(cur<0?"يوم راحة. ارتاح واشرب مية 💤":"مفيش تمارين في اليوم ده. ضيف تمرين من تحت.")+'</div>';
   info.forEach(function(o){
     var x=o.x,ss=o.ss,st=exStat(ss),dn=ss.filter(function(s){return s.ok}).length;vol+=st.v;sets+=st.n;
     var open=man[x.id]!==undefined?man[x.id]:!!(first&&first.x.id==x.id);
@@ -174,14 +195,14 @@ function renderWork(){
 function sets_(ev){return (S.log[TODAY]||{})[ev.e]}
 $("list").onclick=function(ev){
   ac();var b=ev.target.closest("[data-a]");if(!b)return;var a=b.dataset.a,id=b.dataset.e,i=+b.dataset.i;
-  if(a=="del"){S.plan[cur].e=S.plan[cur].e.filter(function(x){return x.id!=id});save();return renderWork()}
+  if(a=="del"){PD().e=PD().e.filter(function(x){return x.id!=id});save();return renderWork()}
   if(a=="tgl"){var cd=b.closest(".card");man[id]=!cd.querySelector(".sh");return renderWork()}
-  var arr=(S.log[WD]||{})[id],x=S.plan[cur].e.filter(function(z){return z.id==id})[0];if(!arr||!x)return;
+  var arr=(S.log[WD]||{})[id],x=PD().e.filter(function(z){return z.id==id})[0];if(!arr||!x)return;
   if(a=="tg"){arr[i].t=TG[arr[i].t]}
   else if(a=="ck"){var s=arr[i];s.ok=s.ok?0:1;
     if(!s.ok)sfx("off");
     else{var pr=0;if(s.t!="w"&&s.w>0){var pb=bestE1(id,s),v=e1(s.w,s.r);if(pb>0&&v>pb){pr=1;toast("🏆 رقم قياسي جديد في "+x.n+": 1RM "+v+" كجم")}}
-      var xd=arr.every(function(z){return z.ok}),all=xd&&S.plan[cur].e.every(function(z){var q=(S.log[WD]||{})[z.id];return q&&q.length&&q.every(function(w){return w.ok})});
+      var xd=arr.every(function(z){return z.ok}),all=xd&&PD().e.every(function(z){var q=(S.log[WD]||{})[z.id];return q&&q.length&&q.every(function(w){return w.ok})});
       sfx(pr?"pr":"ck");if(xd)delete man[id];
       if(all){toast("🎉 خلصت تمرين اليوم كله");$("tm").hidden=true;ncancel();unsched();clearInterval(tint);setTimeout(function(){sfx("day")},400)}
       else{if(xd)setTimeout(function(){sfx("ex")},400);startRest()}}}
@@ -197,7 +218,7 @@ $("list").onchange=function(ev){var t=ev.target,f=t.dataset.f;if(!f)return;var a
 $("add").onclick=function(){
   var n=$("en").value.trim(),s=parseInt($("es").value,10),r=$("er").value.trim();
   if(!n||!s||!r){toast("اكتب اسم التمرين وعدد المجاميع والعدات");return}
-  S.plan[cur].e.push({id:uid(),n:n,s:s,r:r});save();$("en").value=$("es").value=$("er").value="";renderWork()};
+  if(!PD()){toast("ده يوم راحة");return}PD().e.push({id:uid(),n:n,s:s,r:r});save();$("en").value=$("es").value=$("er").value="";renderWork()};
 
 function line(pts){
   if(pts.length<2)return '<div class="empty">محتاج تسجيلين على الأقل عشان يظهر الرسم.</div>';
@@ -272,22 +293,26 @@ $("tplus").onclick=function(){tend+=15000;tick();sched()};$("tminus").onclick=fu
 $("tskip").onclick=function(){ncancel();unsched();clearInterval(tint);$("tm").hidden=true;tend=0};
 
 $("tpl").innerHTML=Object.keys(TPL).map(function(k){return '<button class="btn alt" data-p="'+k+'">'+k+'</button>'}).join("");
-$("tpl").onclick=function(ev){var b=ev.target.closest("[data-p]");if(!b)return;if(!confirm("هتستبدل جدولك الحالي بالبرنامج ده. تكمل؟"))return;S.plan=build(TPL[b.dataset.p]);save();$("today").textContent="النهاردة "+DAYS[TIDX]+" · "+S.plan[TIDX].t;setCur(TIDX);renderWork();toast("تم تطبيق البرنامج")};
+$("tpl").onclick=function(ev){var b=ev.target.closest("[data-p]");if(!b)return;if(!confirm("هتستبدل جدولك الحالي بالبرنامج ده. تكمل؟"))return;S.plan=build(TPL[b.dataset.p]);S.sched=defSched(S.plan.length);save();refreshToday();renderWork();renderSched();toast("تم تطبيق البرنامج")};
+$("bk1").onclick=function(){var t=$("bkt");t.value=JSON.stringify(S);t.select();try{document.execCommand("copy");toast("اتنسخت النسخة. الصقها في ملاحظات")}catch(e){}};
+$("bk2").onclick=function(){try{var o=JSON.parse($("bkt").value);if(!o||!o.plan||!o.log)throw 0;if(!confirm("هتستبدل كل بياناتك بالنسخة دي. تكمل؟"))return;S=o;save();location.reload()}catch(e){toast("النص مش نسخة صحيحة")}};
 $("exp").onclick=function(){var nm=exName(),rows=["date,exercise,set,type,kg,reps,est_1rm"];
   Object.keys(S.log).sort().forEach(function(d){Object.keys(S.log[d]).forEach(function(id){S.log[d][id].forEach(function(s,i){if(s.ok)rows.push([d,'"'+(nm[id]||id)+'"',i+1,s.t,s.w,s.r,e1(s.w,s.r)].join(","))})})});
   var t=$("expt");t.hidden=false;t.value=rows.join("\n");t.select();try{document.execCommand("copy");toast("اتنسخ. الصقه في أي ملف")}catch(e){}};
 
-function refreshToday(){now=new Date();TODAY=dstr(now);TIDX=JS2IDX[now.getDay()];setCur(TIDX);$("today").textContent="النهاردة "+DAYS[TIDX]+" · "+S.plan[TIDX].t;$("bd").value=TODAY}
+function refreshToday(){now=new Date();TODAY=dstr(now);TIDX=S.sched[JS2IDX[now.getDay()]];if(TIDX==null)TIDX=0;setCur(TIDX);updToday();$("bd").value=TODAY}
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&dstr(new Date())!=TODAY){refreshToday();fillBody();renderWork()}});
-function tab(n){if(n=="1"){refreshToday();renderWork()}["1","2","3","4"].forEach(function(k){$("v"+k).hidden=k!=n});
+function renderSched(){var h="";for(var i=0;i<7;i++){var o=S.plan.map(function(d,k){return '<option value="'+k+'"'+(S.sched[i]==k?" selected":"")+'>'+esc(d.t)+'</option>'}).join("")+'<option value="-1"'+(S.sched[i]<0?" selected":"")+'>راحة</option>';h+='<div class="row" style="margin-top:6px"><span>'+DAYS[i]+'</span><select data-sd="'+i+'" style="width:140px">'+o+'</select></div>'}$("sch").innerHTML=h}
+$("sch").onchange=function(ev){var t=ev.target;if(t.dataset.sd===undefined)return;S.sched[+t.dataset.sd]=+t.value;save();refreshToday();renderWork();toast("اتحفظ جدول الأسبوع")};
+function tab(n){if(n=="1"){if(dstr(new Date())!=TODAY)refreshToday();renderWork()}["1","2","3","4"].forEach(function(k){$("v"+k).hidden=k!=n});
   $("tabs").querySelectorAll("button").forEach(function(b){b.className=b.dataset.t==n?"on":""});
-  if(n=="2")renderStats();if(n=="3"){$("bd").value=dstr(new Date());fillBody();renderBody()}}
+  if(n=="2")renderStats();if(n=="4")renderSched();if(n=="3"){$("bd").value=dstr(new Date());fillBody();renderBody()}}
 $("tabs").onclick=function(ev){var b=ev.target.closest("button");if(b)tab(b.dataset.t)};
 $("vol").value=Math.round((S.vol==null?.6:S.vol)*100);$("vol").oninput=function(){S.vol=this.value/100;save()};$("vol").onchange=function(){ac();tone(988,.3,0,1,"square")};$("vt").onclick=function(){ac();beep()};
 function sndL(){$("snd").textContent=S.snd===false?"مقفولة":"شغالة"}
 $("snd").onclick=function(){S.snd=S.snd===false;save();sndL();ac()};sndL();
 document.addEventListener("click",function(e){if(e.target.closest("button")&&!e.target.closest("#list")){ac();sfx("tap")}});
-renderWork();
+refreshToday();renderWork();
 </script>
 </body>
 </html>
